@@ -35,6 +35,7 @@ class BankAccountRoutes(/* TODO Provide the business layer */)(implicit val syst
             post {
               entity(as[BankAccountCreationRequest]) { bankAccount =>
                 onSuccess(createBankAccount(bankAccount)) { performed =>
+                  // FIXME The returned id must be placed in the Location header
                   complete((StatusCodes.Created, performed))
                 }
               }
@@ -52,6 +53,7 @@ class BankAccountRoutes(/* TODO Provide the business layer */)(implicit val syst
             put {
               entity(as[BankAccountBalanceUpdateRequest]) { request =>
                 onSuccess(updateBalance(id, request)) { performed =>
+                  // FIXME: This is not the correct return type
                   complete((StatusCodes.OK, performed))
                 }
               }
