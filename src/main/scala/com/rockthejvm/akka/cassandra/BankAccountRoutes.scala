@@ -1,11 +1,17 @@
 package com.rockthejvm.akka.cassandra
 
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.Route
+
+import scala.concurrent.Future
 import akka.actor.typed.ActorSystem
 import akka.util.Timeout
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+import io.circe.generic.auto._
 import com.rockthejvm.akka.cassandra.Bank.GetBankAccountResponse
 import com.rockthejvm.akka.cassandra.BankAccountRoutes.{BankAccountBalanceUpdateRequest, BankAccountCreationRequest}
 
-import scala.concurrent.Future
 
 object BankAccountRoutes {
   final case class BankAccountCreationRequest(user: String, currency: String, balance: Double)
@@ -20,5 +26,38 @@ class BankAccountRoutes(/* TODO Provide the business layer */)(implicit val syst
   def findBankAccount(id: String): Future[GetBankAccountResponse] = ???
   def createBankAccount(bankAccount: BankAccountCreationRequest): Future[String] = ???
   def updateBalance(id: String, request: BankAccountBalanceUpdateRequest): Future[Double] = ???
+
+  val bankAccountRoutes: Route =
+    pathPrefix("bank-accounts") {
+      concat(
+        pathEnd {
+          concat(
+            post {
+              entity(as[BankAccountCreationRequest]) { bankAccount =>
+                onSuccess(createBankAccount(bankAccount)) { performed =>
+                  complete((StatusCodes.Created, performed))
+                }
+              }
+            })
+        },
+        path(Segment) { id =>
+          concat(
+            get {
+              rejectEmptyResponse {
+                onSuccess(findBankAccount(id)) { response =>
+                  complete(response.maybeBankAccount)
+                }
+              }
+            },
+            put {
+              entity(as[BankAccountBalanceUpdateRequest]) { request =>
+                onSuccess(updateBalance(id, request)) { performed =>
+                  complete((StatusCodes.OK, performed))
+                }
+              }
+            }
+          )
+        })
+    }
 
 }
