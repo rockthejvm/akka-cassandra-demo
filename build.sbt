@@ -12,14 +12,15 @@ lazy val root = (project in file(".")).
       "com.typesafe.akka" %% "akka-http"                % akkaHttpVersion,
       "com.typesafe.akka" %% "akka-actor-typed"         % akkaVersion,
       "com.typesafe.akka" %% "akka-stream"              % akkaVersion,
+      "com.typesafe.akka" %% "akka-persistence-typed"   % akkaVersion,
       "io.circe"          %% "circe-core"               % circeVersion,
       "io.circe"          %% "circe-generic"            % circeVersion,
       "io.circe"          %% "circe-parser"             % circeVersion,
       "de.heikoseeberger" %% "akka-http-circe"          % "1.39.2",
-      "ch.qos.logback"    % "logback-classic"           % "1.2.3",
+      "ch.qos.logback"    % "logback-classic"           % "1.2.10",
 
       "com.typesafe.akka" %% "akka-http-testkit"        % akkaHttpVersion % Test,
       "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion     % Test,
-      "org.scalatest"     %% "scalatest"                % "3.1.4"         % Test
+      "org.scalatest"     %% "scalatest"                % "3.2.9"         % Test
     )
   )
