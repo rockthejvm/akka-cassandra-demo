@@ -2,7 +2,9 @@ package com.rockthejvm.akka.cassandra
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import com.rockthejvm.akka.cassandra.BankAccount.{BankAccount, Command, CreateBankAccount}
+import com.rockthejvm.akka.cassandra.PersistentBankAccount.{BankAccount, Command, CreateBankAccount}
+
+import java.util.UUID
 
 object Bank {
 
@@ -13,7 +15,11 @@ object Bank {
   def apply(): Behavior[Command] = registry(Map.empty)
 
   private def registry(bankAccounts: Map[String, ActorRef[_]]): Behavior[Command] =
-    Behaviors.receiveMessage { case CreateBankAccount(user, currency, initialBalance, replyTo) =>
-      ???
+    Behaviors.receiveMessage {
+      case CreateBankAccount(user, currency, initialBalance, replyTo) =>
+        val id = UUID.randomUUID().toString
+        PersistentBankAccount(id)
+        // TODO Implement the response (...or not?)
+
     }
 }
