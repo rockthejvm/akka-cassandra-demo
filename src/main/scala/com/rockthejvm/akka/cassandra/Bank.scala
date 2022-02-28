@@ -15,11 +15,14 @@ object Bank {
   def apply(): Behavior[Command] = registry(Map.empty)
 
   private def registry(bankAccounts: Map[String, ActorRef[_]]): Behavior[Command] =
-    Behaviors.receiveMessage {
-      case CreateBankAccount(user, currency, initialBalance, replyTo) =>
-        val id = UUID.randomUUID().toString
-        PersistentBankAccount(id)
-        // TODO Implement the response (...or not?)
-
+    Behaviors.receive { (ctx, message) =>
+      message match {
+        case CreateBankAccount(user, currency, initialBalance, replyTo) =>
+          val id             = UUID.randomUUID().toString
+          val newBankAccount = ctx.spawn(PersistentBankAccount(id), id)
+          newBankAccount ! CreateBankAccount(user, currency, initialBalance, replyTo)
+          registry(bankAccounts + (id -> newBankAccount))
+        // TODO Implement other cases
+      }
     }
 }
