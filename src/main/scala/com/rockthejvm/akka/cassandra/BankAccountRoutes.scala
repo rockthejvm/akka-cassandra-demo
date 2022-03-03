@@ -24,7 +24,7 @@ object BankAccountRoutes {
 class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSystem[_])  {
 
   private implicit val timeout =
-    Timeout.create(system.settings.config.getDuration("my-app.routes.ask-timeout"))
+    Timeout.create(system.settings.config.getDuration("akka-cassandra-demo.routes.ask-timeout"))
 
   def findBankAccount(id: String): Future[GetBankAccountResponse] = ???
   def createBankAccount(bankAccount: BankAccountCreationRequest): Future[BankAccountCreatedResponse] =
