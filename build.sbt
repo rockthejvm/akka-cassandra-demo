@@ -13,6 +13,7 @@ lazy val root = (project in file(".")).
       "com.typesafe.akka" %% "akka-actor-typed"         % akkaVersion,
       "com.typesafe.akka" %% "akka-stream"              % akkaVersion,
       "com.typesafe.akka" %% "akka-persistence-typed"   % akkaVersion,
+      "org.fusesource.leveldbjni" % "leveldbjni-all" % "1.8", // TODO remove
       "io.circe"          %% "circe-core"               % circeVersion,
       "io.circe"          %% "circe-generic"            % circeVersion,
       "io.circe"          %% "circe-parser"             % circeVersion,
