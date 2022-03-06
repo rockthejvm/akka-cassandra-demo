@@ -9,19 +9,19 @@ lazy val root = (project in file(".")).
     )),
     name := "akka-cassandra-demo",
     libraryDependencies ++= Seq(
-      "com.typesafe.akka" %% "akka-http"                % akkaHttpVersion,
-      "com.typesafe.akka" %% "akka-actor-typed"         % akkaVersion,
-      "com.typesafe.akka" %% "akka-stream"              % akkaVersion,
-      "com.typesafe.akka" %% "akka-persistence-typed"   % akkaVersion,
-      "org.fusesource.leveldbjni" % "leveldbjni-all" % "1.8", // TODO remove
-      "io.circe"          %% "circe-core"               % circeVersion,
-      "io.circe"          %% "circe-generic"            % circeVersion,
-      "io.circe"          %% "circe-parser"             % circeVersion,
-      "de.heikoseeberger" %% "akka-http-circe"          % "1.39.2",
-      "ch.qos.logback"    % "logback-classic"           % "1.2.10",
+      "com.typesafe.akka" %% "akka-http"                  % akkaHttpVersion,
+      "com.typesafe.akka" %% "akka-actor-typed"           % akkaVersion,
+      "com.typesafe.akka" %% "akka-stream"                % akkaVersion,
+      "com.typesafe.akka" %% "akka-persistence-typed"     % akkaVersion,
+      "com.typesafe.akka" %% "akka-persistence-cassandra" % "1.0.5",
+      "io.circe"          %% "circe-core"                 % circeVersion,
+      "io.circe"          %% "circe-generic"              % circeVersion,
+      "io.circe"          %% "circe-parser"               % circeVersion,
+      "de.heikoseeberger" %% "akka-http-circe"            % "1.39.2",
+      "ch.qos.logback"    % "logback-classic"             % "1.2.10",
 
-      "com.typesafe.akka" %% "akka-http-testkit"        % akkaHttpVersion % Test,
-      "com.typesafe.akka" %% "akka-actor-testkit-typed" % akkaVersion     % Test,
-      "org.scalatest"     %% "scalatest"                % "3.2.9"         % Test
+      "com.typesafe.akka" %% "akka-http-testkit"          % akkaHttpVersion % Test,
+      "com.typesafe.akka" %% "akka-actor-testkit-typed"   % akkaVersion     % Test,
+      "org.scalatest"     %% "scalatest"                  % "3.2.9"         % Test
     )
   )
