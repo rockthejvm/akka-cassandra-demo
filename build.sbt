@@ -1,5 +1,5 @@
 lazy val akkaHttpVersion = "10.2.8"
-lazy val akkaVersion     = "2.6.18"
+lazy val akkaVersion     = "2.6.9"
 lazy val circeVersion    = "0.14.1"
 
 lazy val root = (project in file(".")).
@@ -13,6 +13,7 @@ lazy val root = (project in file(".")).
       "com.typesafe.akka" %% "akka-actor-typed"           % akkaVersion,
       "com.typesafe.akka" %% "akka-stream"                % akkaVersion,
       "com.typesafe.akka" %% "akka-persistence-typed"     % akkaVersion,
+      "com.datastax.oss"  % "java-driver-core"            % "4.13.0",   // See https://github.com/akka/alpakka/issues/2556
       "com.typesafe.akka" %% "akka-persistence-cassandra" % "1.0.5",
       "io.circe"          %% "circe-core"                 % circeVersion,
       "io.circe"          %% "circe-generic"              % circeVersion,
