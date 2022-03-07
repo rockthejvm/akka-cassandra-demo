@@ -3,7 +3,7 @@ package com.rockthejvm.akka.cassandra
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior}
-import com.rockthejvm.akka.cassandra.Bank.BankAccountCreatedResponse
+import com.rockthejvm.akka.cassandra.Bank.{BankAccountBalanceUpdatedResponse, BankAccountCreatedResponse}
 
 object PersistentBankAccount {
 
@@ -15,15 +15,22 @@ object PersistentBankAccount {
       initialBalance: Double,
       replyTo: ActorRef[BankAccountCreatedResponse] // TODO Change this type
   ) extends Command
+  final case class UpdateBalance(
+      id: String,
+      currency: String,
+      amount: Double,
+      replyTo: ActorRef[BankAccountBalanceUpdatedResponse] // TODO Change this type
+  ) extends Command
 
   // Events
   sealed trait Event
   final case class BankAccountCreated(bankAccount: BankAccount) extends Event
+  final case class BalanceUpdated(newBalance: Double) extends Event
 
   // State
   final case class State(bankAccount: BankAccount)
   object State {
-    def empty(id: String): State = State(BankAccount(id, "", "",  0.0))
+    def empty(id: String): State = State(BankAccount(id, "", "", 0.0))
   }
 
   // Domain object
@@ -42,6 +49,13 @@ object PersistentBankAccount {
         Effect
           .persist(BankAccountCreated(BankAccount(id, user, currency, initialBalance)))
           .thenReply(replyTo)(_ => BankAccountCreatedResponse(id))
+      case UpdateBalance(_, currency, amount, replyTo) =>
+        // TODO Add some validation logic
+        // TODO We have also to change the currency
+        val newBalance = state.bankAccount.balance + amount
+        Effect
+          .persist(BalanceUpdated(newBalance))
+          .thenReply(replyTo)(_ => BankAccountBalanceUpdatedResponse(newBalance))
     }
   }
 
@@ -49,6 +63,8 @@ object PersistentBankAccount {
     event match {
       case BankAccountCreated(bankAccount) =>
         state.copy(bankAccount = bankAccount)
+      case BalanceUpdated(newBalance) =>
+        state.copy(bankAccount = state.bankAccount.copy(balance = newBalance))
     }
   }
 
