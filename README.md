@@ -17,3 +17,9 @@ curl -v -X PUT http://localhost:8080/bank-accounts/ce1f4ac3-f1be-4523-b323-25e81
    -H 'Content-Type: application/json'\
    -d '{"currency":"EUR", "amount": 500.0}'
 ```
+
+#### Retrieving the details of a bank account
+
+```shell
+curl -v http://localhost:8080/bank-accounts/ce1f4ac3-f1be-4523-b323-25e81d90322f
+```

@@ -3,7 +3,7 @@ package com.rockthejvm.akka.cassandra
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior}
-import com.rockthejvm.akka.cassandra.Bank.{BankAccountBalanceUpdatedResponse, BankAccountCreatedResponse}
+import com.rockthejvm.akka.cassandra.Bank.{BankAccountBalanceUpdatedResponse, BankAccountCreatedResponse, GetBankAccountResponse}
 
 object PersistentBankAccount {
 
@@ -21,11 +21,15 @@ object PersistentBankAccount {
       amount: Double,
       replyTo: ActorRef[BankAccountBalanceUpdatedResponse] // TODO Change this type
   ) extends Command
+  final case class GetBankAccount(
+      id: String,
+      replyTo: ActorRef[GetBankAccountResponse]
+  ) extends Command
 
   // Events
   sealed trait Event
   final case class BankAccountCreated(bankAccount: BankAccount) extends Event
-  final case class BalanceUpdated(newBalance: Double) extends Event
+  final case class BalanceUpdated(newBalance: Double)           extends Event
 
   // State
   final case class State(bankAccount: BankAccount)
@@ -56,6 +60,8 @@ object PersistentBankAccount {
         Effect
           .persist(BalanceUpdated(newBalance))
           .thenReply(replyTo)(_ => BankAccountBalanceUpdatedResponse(newBalance))
+      case GetBankAccount(_, replyTo) =>
+        Effect.reply(replyTo)(GetBankAccountResponse(Some(state.bankAccount)))
     }
   }
 

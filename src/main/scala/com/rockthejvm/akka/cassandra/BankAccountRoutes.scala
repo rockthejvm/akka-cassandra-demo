@@ -1,19 +1,19 @@
 package com.rockthejvm.akka.cassandra
 
-import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.model.StatusCodes
-import akka.http.scaladsl.server.Route
-
-import scala.concurrent.Future
-import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.actor.typed.scaladsl.AskPattern._
+import akka.actor.typed.{ActorRef, ActorSystem}
+import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.headers.Location
+import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
-import io.circe.generic.auto._
 import com.rockthejvm.akka.cassandra.Bank.{BankAccountBalanceUpdatedResponse, BankAccountCreatedResponse, GetBankAccountResponse}
 import com.rockthejvm.akka.cassandra.BankAccountRoutes.{BankAccountBalanceUpdateRequest, BankAccountCreationRequest}
-import com.rockthejvm.akka.cassandra.PersistentBankAccount.{Command, CreateBankAccount, UpdateBalance}
+import com.rockthejvm.akka.cassandra.PersistentBankAccount.{Command, CreateBankAccount, GetBankAccount, UpdateBalance}
+import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+import io.circe.generic.auto._
+
+import scala.concurrent.{ExecutionContextExecutor, Future}
 
 object BankAccountRoutes {
   final case class BankAccountCreationRequest(user: String, currency: String, balance: Double)
@@ -22,12 +22,15 @@ object BankAccountRoutes {
 
 class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSystem[_]) {
 
-  implicit val ec = system.executionContext
+  implicit val ec: ExecutionContextExecutor = system.executionContext
 
-  private implicit val timeout =
+  private implicit val timeout: Timeout =
     Timeout.create(system.settings.config.getDuration("akka-cassandra-demo.routes.ask-timeout"))
 
-  def findBankAccount(id: String): Future[GetBankAccountResponse] = ???
+  def findBankAccount(id: String): Future[GetBankAccountResponse] = {
+    bank.ask(replyTo => GetBankAccount(id, replyTo))
+  }
+
   def createBankAccount(
       bankAccount: BankAccountCreationRequest
   ): Future[BankAccountCreatedResponse] =
@@ -68,7 +71,10 @@ class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSyste
             get {
               rejectEmptyResponse {
                 onSuccess(findBankAccount(id)) { response =>
-                  complete(response.maybeBankAccount)
+                  response.maybeBankAccount match {
+                    case Some(bankAccount) => complete(bankAccount)
+                    case None => complete(StatusCodes.NotFound)
+                  }
                 }
               }
             },

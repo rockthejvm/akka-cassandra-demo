@@ -2,7 +2,7 @@ package com.rockthejvm.akka.cassandra
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import com.rockthejvm.akka.cassandra.PersistentBankAccount.{BankAccount, Command, CreateBankAccount, UpdateBalance}
+import com.rockthejvm.akka.cassandra.PersistentBankAccount.{BankAccount, Command, CreateBankAccount, GetBankAccount, UpdateBalance}
 
 import java.util.UUID
 
@@ -31,7 +31,14 @@ object Bank {
               // TODO: Reply with some error
           }
           Behaviors.same
-        // TODO Implement other cases
+        case getCmd @ GetBankAccount(id, replyTo) =>
+          bankAccounts.get(id) match {
+            case Some(bankAccount) =>
+              bankAccount ! getCmd
+            case None =>
+              replyTo ! GetBankAccountResponse(None)
+          }
+          Behaviors.same
       }
     }
 }
