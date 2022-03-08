@@ -81,7 +81,6 @@ class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSyste
             put {
               entity(as[BankAccountBalanceUpdateRequest]) { request =>
                 onSuccess(updateBalance(id, request)) { newBalance =>
-                  // FIXME: This is not the correct return type
                   complete((StatusCodes.OK, newBalance))
                 }
               }
