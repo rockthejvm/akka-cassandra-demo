@@ -18,6 +18,7 @@ lazy val root = (project in file(".")).
       "io.circe"          %% "circe-core"                 % circeVersion,
       "io.circe"          %% "circe-generic"              % circeVersion,
       "io.circe"          %% "circe-parser"               % circeVersion,
+      "io.circe"          %% "circe-refined"              % circeVersion,
       "de.heikoseeberger" %% "akka-http-circe"            % "1.39.2",
       "ch.qos.logback"    % "logback-classic"             % "1.2.10",
 

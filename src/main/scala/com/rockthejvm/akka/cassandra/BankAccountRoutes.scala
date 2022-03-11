@@ -11,12 +11,15 @@ import com.rockthejvm.akka.cassandra.Bank.{BankAccountBalanceUpdatedResponse, Ba
 import com.rockthejvm.akka.cassandra.BankAccountRoutes.{BankAccountBalanceUpdateRequest, BankAccountCreationRequest}
 import com.rockthejvm.akka.cassandra.PersistentBankAccount.{Command, CreateBankAccount, GetBankAccount, UpdateBalance}
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
+import eu.timepit.refined.types.numeric.NonNegDouble
+import eu.timepit.refined.types.string.NonEmptyString
 import io.circe.generic.auto._
+import io.circe.refined._
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 
 object BankAccountRoutes {
-  final case class BankAccountCreationRequest(user: String, currency: String, balance: Double)
+  final case class BankAccountCreationRequest(user: NonEmptyString, currency: NonEmptyString, balance: NonNegDouble)
   final case class BankAccountBalanceUpdateRequest(currency: String, amount: Double)
 }
 
@@ -36,9 +39,9 @@ class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSyste
   ): Future[BankAccountCreatedResponse] =
     bank.ask(replyTo =>
       CreateBankAccount(
-        bankAccount.user,
-        bankAccount.currency,
-        bankAccount.balance,
+        bankAccount.user.value,
+        bankAccount.currency.value,
+        bankAccount.balance.value,
         replyTo
       )
     )
