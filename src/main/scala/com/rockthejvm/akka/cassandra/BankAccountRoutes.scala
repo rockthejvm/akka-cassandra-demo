@@ -20,7 +20,7 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 
 object BankAccountRoutes {
   final case class BankAccountCreationRequest(user: NonEmptyString, currency: NonEmptyString, balance: NonNegDouble)
-  final case class BankAccountBalanceUpdateRequest(currency: String, amount: Double)
+  final case class BankAccountBalanceUpdateRequest(currency: NonEmptyString, amount: Double)
 }
 
 class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSystem[_]) {
@@ -49,7 +49,7 @@ class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSyste
     bank.ask { replyTo: ActorRef[BankAccountBalanceUpdatedResponse] =>
       UpdateBalance(
         id,
-        request.currency,
+        request.currency.value,
         request.amount,
         replyTo
       )
