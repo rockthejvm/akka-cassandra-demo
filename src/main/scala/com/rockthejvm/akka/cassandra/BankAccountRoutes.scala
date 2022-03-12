@@ -7,9 +7,21 @@ import akka.http.scaladsl.model.headers.Location
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.util.Timeout
-import com.rockthejvm.akka.cassandra.Bank.{BankAccountBalanceUpdatedResponse, BankAccountCreatedResponse, GetBankAccountResponse}
-import com.rockthejvm.akka.cassandra.BankAccountRoutes.{BankAccountBalanceUpdateRequest, BankAccountCreationRequest}
-import com.rockthejvm.akka.cassandra.PersistentBankAccount.{Command, CreateBankAccount, GetBankAccount, UpdateBalance}
+import com.rockthejvm.akka.cassandra.Bank.{
+  BankAccountBalanceUpdatedResponse,
+  BankAccountCreatedResponse,
+  GetBankAccountResponse
+}
+import com.rockthejvm.akka.cassandra.BankAccountRoutes.{
+  BankAccountBalanceUpdateRequest,
+  BankAccountCreationRequest
+}
+import com.rockthejvm.akka.cassandra.PersistentBankAccount.{
+  Command,
+  CreateBankAccount,
+  GetBankAccount,
+  UpdateBalance
+}
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import eu.timepit.refined.types.numeric.NonNegDouble
 import eu.timepit.refined.types.string.NonEmptyString
@@ -19,8 +31,28 @@ import io.circe.refined._
 import scala.concurrent.{ExecutionContextExecutor, Future}
 
 object BankAccountRoutes {
-  final case class BankAccountCreationRequest(user: NonEmptyString, currency: NonEmptyString, balance: NonNegDouble)
-  final case class BankAccountBalanceUpdateRequest(currency: NonEmptyString, amount: Double)
+  final case class BankAccountCreationRequest(
+      user: NonEmptyString,
+      currency: NonEmptyString,
+      balance: NonNegDouble
+  ) {
+    def toCmd(replyTo: ActorRef[BankAccountCreatedResponse]): Command =
+      CreateBankAccount(
+        user.value,
+        currency.value,
+        balance.value,
+        replyTo
+      )
+  }
+  final case class BankAccountBalanceUpdateRequest(currency: NonEmptyString, amount: Double) {
+    def toCmd(id: String, replyTo: ActorRef[BankAccountBalanceUpdatedResponse]): Command =
+      UpdateBalance(
+        id,
+        currency.value,
+        amount,
+        replyTo
+      )
+  }
 }
 
 class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSystem[_]) {
@@ -34,26 +66,15 @@ class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSyste
     bank.ask(replyTo => GetBankAccount(id, replyTo))
   }
 
-  def createBankAccount(
-      bankAccount: BankAccountCreationRequest
-  ): Future[BankAccountCreatedResponse] =
-    bank.ask(replyTo =>
-      CreateBankAccount(
-        bankAccount.user.value,
-        bankAccount.currency.value,
-        bankAccount.balance.value,
-        replyTo
-      )
-    )
+  def createBankAccount(request: BankAccountCreationRequest): Future[BankAccountCreatedResponse] =
+    bank.ask(replyTo => request.toCmd(replyTo))
+
   def updateBalance(id: String, request: BankAccountBalanceUpdateRequest): Future[Double] =
-    bank.ask { replyTo: ActorRef[BankAccountBalanceUpdatedResponse] =>
-      UpdateBalance(
-        id,
-        request.currency.value,
-        request.amount,
-        replyTo
-      )
-    }.map(_.newBalance)
+    bank
+      .ask { replyTo: ActorRef[BankAccountBalanceUpdatedResponse] =>
+        request.toCmd(id, replyTo)
+      }
+      .map(_.newBalance)
 
   val bankAccountRoutes: Route =
     pathPrefix("bank-accounts") {
@@ -76,7 +97,7 @@ class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSyste
                 onSuccess(findBankAccount(id)) { response =>
                   response.maybeBankAccount match {
                     case Some(bankAccount) => complete(bankAccount)
-                    case None => complete(StatusCodes.NotFound)
+                    case None              => complete(StatusCodes.NotFound)
                   }
                 }
               }
