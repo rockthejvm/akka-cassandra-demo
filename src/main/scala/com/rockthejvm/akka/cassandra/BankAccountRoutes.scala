@@ -11,26 +11,63 @@ import akka.util.Timeout
 import cats.data.Validated.{Invalid, Valid}
 import cats.data._
 import cats.implicits._
-import com.rockthejvm.akka.cassandra.Bank.{BankAccountBalanceUpdatedResponse, BankAccountCreatedResponse, GetBankAccountResponse}
-import com.rockthejvm.akka.cassandra.BankAccountRoutes.{BankAccountBalanceUpdateRequest, BankAccountCreationRequest}
-import com.rockthejvm.akka.cassandra.PersistentBankAccount.{Command, CreateBankAccount, GetBankAccount, UpdateBalance}
+import com.rockthejvm.akka.cassandra.Bank.{
+  BankAccountBalanceUpdatedResponse,
+  BankAccountCreatedResponse,
+  GetBankAccountResponse
+}
+import com.rockthejvm.akka.cassandra.BankAccountRoutes.{
+  BankAccountBalanceUpdateRequest,
+  BankAccountCreationRequest
+}
+import com.rockthejvm.akka.cassandra.PersistentBankAccount.{
+  Command,
+  CreateBankAccount,
+  GetBankAccount,
+  UpdateBalance
+}
 import com.rockthejvm.akka.cassandra.Validation._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.generic.auto._
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 object Validation {
-  abstract class ValidationFailure(val message: String)
+
+  trait Required[F] extends (F => Boolean)
+  trait Minimum[F]  extends ((F, Int) => Boolean)
+
+  implicit val minimumDouble: Minimum[Double] = _ >= _
+
+  implicit val requiredString: Required[String] = _.nonEmpty
+
+  def required[F: Required](field: F): Boolean = implicitly[F](field)
+
+  def minimum[F: Minimum](field: F, limit: Int): Boolean = {
+    val min: Minimum[F] = implicitly[Minimum[F]]
+    min(field, limit)
+  }
 
   type ValidationResult[A] = ValidatedNel[ValidationFailure, A]
 
   trait Validatable[A] {
-    def validate: ValidationResult[A]
+    def validate(toValidate: A): ValidationResult[A]
   }
 
-  case object UserIsEmpty     extends ValidationFailure("User is empty")
-  case object CurrencyIsEmpty extends ValidationFailure("Currency is empty")
-  case object NegativeBalance extends ValidationFailure("Balance must be positive")
+  sealed trait ValidationFailure {
+    def errorMessage: String
+  }
+  case class EmptyField(fieldName: String) extends ValidationFailure {
+    override def errorMessage: String = s"$fieldName is empty"
+  }
+  case class NegativeValue(fieldName: String) extends ValidationFailure {
+    override def errorMessage: String = s"$fieldName is negative"
+  }
+
+  def validateRequired[F: Required](field: F, fieldName: String): ValidationResult[F] =
+    if (required(field)) field.validNel else EmptyField(fieldName).invalidNel
+  def validateMinimum[F: Minimum](field: F, limit: Int, fieldName: String): ValidationResult[F] =
+    if (minimum(field, limit)) field.validNel else NegativeValue(fieldName).invalidNel
+
 }
 
 object BankAccountRoutes {
@@ -38,7 +75,7 @@ object BankAccountRoutes {
       user: String,
       currency: String,
       balance: Double
-  ) extends Validation.Validatable[BankAccountCreationRequest] {
+  ) {
 
     def toCmd(replyTo: ActorRef[BankAccountCreatedResponse]): Command =
       CreateBankAccount(
@@ -47,25 +84,15 @@ object BankAccountRoutes {
         balance,
         replyTo
       )
-
-    override def validate: ValidationResult[BankAccountCreationRequest] = (
-      validateUser,
-      validateCurrency,
-      validateBalance
-    ).mapN(BankAccountCreationRequest)
-
-    private def validateUser: ValidationResult[String] =
-      if (user.isEmpty) UserIsEmpty.invalidNel
-      else user.validNel
-
-    private def validateCurrency: ValidationResult[String] =
-      if (currency.isEmpty) CurrencyIsEmpty.invalidNel
-      else currency.validNel
-
-    private def validateBalance: ValidationResult[Double] =
-      if (balance < 0) NegativeBalance.invalidNel
-      else balance.validNel
   }
+
+  implicit val BankAccountCreationRequestValidatable: Validatable[BankAccountCreationRequest] =
+    (toVal: BankAccountCreationRequest) =>
+      (
+        validateRequired(toVal.user, "user"),
+        validateRequired(toVal.currency, "currency"),
+        validateMinimum(toVal.balance, 0, "balance")
+      ).mapN(BankAccountCreationRequest.apply)
 
   final case class BankAccountBalanceUpdateRequest(currency: String, amount: Double) {
     def toCmd(id: String, replyTo: ActorRef[BankAccountBalanceUpdatedResponse]): Command =
@@ -98,7 +125,6 @@ class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSyste
         request.toCmd(id, replyTo)
       }
       .map(_.newBalance)
-
 
   implicit def validatedEntityUnmarshaller[A <: Validatable[A]](implicit
       um: FromRequestUnmarshaller[A]
