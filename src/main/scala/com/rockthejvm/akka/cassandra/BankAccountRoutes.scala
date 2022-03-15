@@ -53,6 +53,9 @@ object Validation {
     def validate(toValidate: A): ValidationResult[A]
   }
 
+  def validateEntity[A: Validatable](entity: A): ValidationResult[A] =
+    implicitly[Validatable[A]].validate(entity)
+
   sealed trait ValidationFailure {
     def errorMessage: String
   }
@@ -126,15 +129,15 @@ class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSyste
       }
       .map(_.newBalance)
 
-  implicit def validatedEntityUnmarshaller[A <: Validatable[A]](implicit
+  implicit def validatedEntityUnmarshaller[A: Validatable](implicit
       um: FromRequestUnmarshaller[A]
   ): FromRequestUnmarshaller[Valid[A]] =
     um.flatMap { _ => _ => entity =>
-      entity.validate match {
+      validateEntity(entity) match {
         case v @ Valid(_) =>
           Future.successful(v)
         case Invalid(failures) =>
-          val message = failures.toList.map(_.message).mkString(", ")
+          val message = failures.toList.map(_.errorMessage).mkString(", ")
           Future.failed(new IllegalArgumentException(message))
       }
     }
