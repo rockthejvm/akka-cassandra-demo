@@ -135,8 +135,8 @@ class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSyste
               }
             },
             put {
-              entity(as[BankAccountBalanceUpdateRequest]) { request =>
-                onSuccess(updateBalance(id, request)) { newBalance =>
+              entity(as[Valid[BankAccountBalanceUpdateRequest]]) { request =>
+                onSuccess(updateBalance(id, request.a)) { newBalance =>
                   complete((StatusCodes.OK, newBalance))
                 }
               }
