@@ -1,4 +1,4 @@
-package com.rockthejvm.akka.cassandra
+package com.rockthejvm.akka.cassandra.services
 
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.persistence.typed.PersistenceId
@@ -39,7 +39,8 @@ object PersistentBankAccount {
   // Responses
   sealed trait Response
   final case class BankAccountCreatedResponse(id: String) extends Response
-  final case class BankAccountBalanceUpdatedResponse(newBalance: Double) extends Response// TODO Maybe, we can return the whole updated object?
+  final case class BankAccountBalanceUpdatedResponse(newBalance: Double)
+      extends Response // TODO Maybe, we can return the whole updated object?
   final case class GetBankAccountResponse(maybeBankAccount: Option[BankAccount]) extends Response
 
   // Domain object

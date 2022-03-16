@@ -5,6 +5,7 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Route
 import com.rockthejvm.akka.cassandra.http.routes.BankAccountRoutes
+import com.rockthejvm.akka.cassandra.services.Bank
 
 import scala.util.{Failure, Success}
 

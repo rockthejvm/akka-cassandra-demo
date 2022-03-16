@@ -1,8 +1,8 @@
-package com.rockthejvm.akka.cassandra
+package com.rockthejvm.akka.cassandra.services
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import com.rockthejvm.akka.cassandra.PersistentBankAccount.{BankAccount, Command, CreateBankAccount, GetBankAccount, GetBankAccountResponse, UpdateBalance}
+import com.rockthejvm.akka.cassandra.services.PersistentBankAccount.{Command, CreateBankAccount, GetBankAccount, GetBankAccountResponse, UpdateBalance}
 
 import java.util.UUID
 
@@ -23,7 +23,7 @@ object Bank {
             case Some(bankAccount) =>
               bankAccount ! updateCmd
             case None =>
-              // TODO: Reply with some error
+            // TODO: Reply with some error
           }
           Behaviors.same
         case getCmd @ GetBankAccount(id, replyTo) =>

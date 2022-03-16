@@ -10,12 +10,12 @@ import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
 import akka.util.Timeout
 import cats.data.Validated.{Invalid, Valid}
 import cats.implicits._
-import com.rockthejvm.akka.cassandra.Bank.{
+import com.rockthejvm.akka.cassandra.services.Bank.{
   BankAccountBalanceUpdatedResponse,
   BankAccountCreatedResponse,
   GetBankAccountResponse
 }
-import com.rockthejvm.akka.cassandra.PersistentBankAccount.{
+import com.rockthejvm.akka.cassandra.services.PersistentBankAccount.{
   Command,
   CreateBankAccount,
   GetBankAccount,
