@@ -37,9 +37,10 @@ object PersistentBankAccount {
   }
 
   // Responses
-  final case class BankAccountCreatedResponse(id: String)
-  final case class BankAccountBalanceUpdatedResponse(newBalance: Double) // TODO Maybe, we can return the whole updated object?
-  final case class GetBankAccountResponse(maybeBankAccount: Option[BankAccount])
+  sealed trait Response
+  final case class BankAccountCreatedResponse(id: String) extends Response
+  final case class BankAccountBalanceUpdatedResponse(newBalance: Double) extends Response// TODO Maybe, we can return the whole updated object?
+  final case class GetBankAccountResponse(maybeBankAccount: Option[BankAccount]) extends Response
 
   // Domain object
   final case class BankAccount(
