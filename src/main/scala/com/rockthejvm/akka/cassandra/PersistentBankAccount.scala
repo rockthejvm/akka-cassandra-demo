@@ -3,7 +3,6 @@ package com.rockthejvm.akka.cassandra
 import akka.actor.typed.{ActorRef, Behavior}
 import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior}
-import com.rockthejvm.akka.cassandra.Bank.{BankAccountBalanceUpdatedResponse, BankAccountCreatedResponse, GetBankAccountResponse}
 
 object PersistentBankAccount {
 
@@ -36,6 +35,11 @@ object PersistentBankAccount {
   object State {
     def empty(id: String): State = State(BankAccount(id, "", "", 0.0))
   }
+
+  // Responses
+  final case class BankAccountCreatedResponse(id: String)
+  final case class BankAccountBalanceUpdatedResponse(newBalance: Double) // TODO Maybe, we can return the whole updated object?
+  final case class GetBankAccountResponse(maybeBankAccount: Option[BankAccount])
 
   // Domain object
   final case class BankAccount(

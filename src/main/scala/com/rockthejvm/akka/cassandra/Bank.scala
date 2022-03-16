@@ -2,16 +2,11 @@ package com.rockthejvm.akka.cassandra
 
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import com.rockthejvm.akka.cassandra.PersistentBankAccount.{BankAccount, Command, CreateBankAccount, GetBankAccount, UpdateBalance}
+import com.rockthejvm.akka.cassandra.PersistentBankAccount.{BankAccount, Command, CreateBankAccount, GetBankAccount, GetBankAccountResponse, UpdateBalance}
 
 import java.util.UUID
 
 object Bank {
-
-  // Responses
-  final case class BankAccountCreatedResponse(id: String)
-  final case class BankAccountBalanceUpdatedResponse(newBalance: Double) // TODO Maybe, we can return the whole updated object?
-  final case class GetBankAccountResponse(maybeBankAccount: Option[BankAccount])
 
   def apply(): Behavior[Command] = registry(Map.empty)
 
