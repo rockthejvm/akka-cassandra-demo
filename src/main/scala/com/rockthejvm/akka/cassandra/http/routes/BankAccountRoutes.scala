@@ -65,7 +65,8 @@ object BankAccountRoutes {
   }
 
   object BankAccountBalanceUpdateRequest {
-    implicit val BankAccountBalanceUpdateRequestValidable: Validable[BankAccountBalanceUpdateRequest] =
+    implicit val BankAccountBalanceUpdateRequestValidable
+        : Validable[BankAccountBalanceUpdateRequest] =
       (toVal: BankAccountBalanceUpdateRequest) =>
         (
           validateRequired(toVal.currency, "currency"),
@@ -96,7 +97,7 @@ class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSyste
       .map(_.newBalance)
 
   implicit def validatedEntityUnmarshaller[A: Validable](implicit
-                                                         um: FromRequestUnmarshaller[A]
+      um: FromRequestUnmarshaller[A]
   ): FromRequestUnmarshaller[Valid[A]] =
     um.flatMap { _ => _ => entity =>
       validateEntity(entity) match {
@@ -129,7 +130,8 @@ class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSyste
                 onSuccess(findBankAccount(id)) { response =>
                   response.maybeBankAccount match {
                     case Some(bankAccount) => complete(bankAccount)
-                    case None              => complete(StatusCodes.NotFound)
+                    case None =>
+                      complete(StatusCodes.NotFound, s"No bank-account with id $id found")
                   }
                 }
               }
