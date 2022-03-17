@@ -10,21 +10,9 @@ import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
 import akka.util.Timeout
 import cats.data.Validated.{Invalid, Valid}
 import cats.implicits._
-import com.rockthejvm.akka.cassandra.services.Bank.{
-  BankAccountBalanceUpdatedResponse,
-  BankAccountCreatedResponse,
-  GetBankAccountResponse
-}
-import com.rockthejvm.akka.cassandra.services.PersistentBankAccount.{
-  Command,
-  CreateBankAccount,
-  GetBankAccount,
-  UpdateBalance
-}
-import com.rockthejvm.akka.cassandra.http.routes.BankAccountRoutes.{
-  BankAccountBalanceUpdateRequest,
-  BankAccountCreationRequest
-}
+import com.rockthejvm.akka.cassandra.http.routes.BankAccountRoutes.{BankAccountBalanceUpdateRequest, BankAccountCreationRequest}
+import com.rockthejvm.akka.cassandra.services.Bank.{CreateBankAccountRequest, Request, UpdateBalanceRequest}
+import com.rockthejvm.akka.cassandra.services.PersistentBankAccount.{BankAccountBalanceUpdatedResponse, BankAccountCreatedResponse, GetBankAccountResponse}
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.generic.auto._
 
@@ -36,8 +24,8 @@ object BankAccountRoutes {
       currency: String,
       balance: Double
   ) {
-    def toCmd(replyTo: ActorRef[BankAccountCreatedResponse]): Command =
-      CreateBankAccount(
+    def toCmd(replyTo: ActorRef[BankAccountCreatedResponse]): Request =
+      CreateBankAccountRequest(
         user,
         currency,
         balance,
@@ -55,8 +43,8 @@ object BankAccountRoutes {
   }
 
   final case class BankAccountBalanceUpdateRequest(currency: String, amount: Double) {
-    def toCmd(id: String, replyTo: ActorRef[BankAccountBalanceUpdatedResponse]): Command =
-      UpdateBalance(
+    def toCmd(id: String, replyTo: ActorRef[BankAccountBalanceUpdatedResponse]): Request =
+      UpdateBalanceRequest(
         id,
         currency,
         amount,
@@ -75,7 +63,7 @@ object BankAccountRoutes {
   }
 }
 
-class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSystem[_]) {
+class BankAccountRoutes(bank: ActorRef[Request])(implicit val system: ActorSystem[_]) {
 
   implicit val ec: ExecutionContextExecutor = system.executionContext
 
@@ -83,7 +71,8 @@ class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSyste
     Timeout.create(system.settings.config.getDuration("akka-cassandra-demo.routes.ask-timeout"))
 
   def findBankAccount(id: String): Future[GetBankAccountResponse] = {
-    bank.ask(replyTo => GetBankAccount(id, replyTo))
+    ??? // TODO
+//    bank.ask(replyTo => GetBankAccountRe(id, replyTo))
   }
 
   def createBankAccount(request: BankAccountCreationRequest): Future[BankAccountCreatedResponse] =
