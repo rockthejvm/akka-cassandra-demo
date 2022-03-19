@@ -1,39 +1,61 @@
 package com.rockthejvm.akka.cassandra.services
 
-import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
-import com.rockthejvm.akka.cassandra.services.PersistentBankAccount.{Command, CreateBankAccount, GetBankAccount, GetBankAccountResponse, UpdateBalance}
+import akka.persistence.typed.PersistenceId
+import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior}
+import com.rockthejvm.akka.cassandra.services.PersistentBankAccount._
 
 import java.util.UUID
 
 object Bank {
 
-  def apply(): Behavior[Command] = registry(Map.empty)
+  // Events
+  sealed trait Event
+  case class BankAccountCreated(id: String, bankAccount: ActorRef[Command]) extends Event
 
-  private def registry(bankAccounts: Map[String, ActorRef[Command]]): Behavior[Command] =
-    Behaviors.receive { (ctx, message) =>
-      message match {
+  // State
+  case class State(accounts: Map[String, ActorRef[Command]])
+
+  def apply(): Behavior[Command] = Behaviors.setup { ctx =>
+    EventSourcedBehavior[Command, Event, State](
+      persistenceId = PersistenceId.ofUniqueId("bank"),
+      emptyState = State(Map.empty),
+      commandHandler = (state, cmd) => commandHandler(state, cmd, ctx),
+      eventHandler = eventHandler
+    )
+  }
+
+  val commandHandler: (State, Command, ActorContext[Command]) => Effect[Event, State] = {
+    (state, command, ctx) =>
+      command match {
         case createCmd @ CreateBankAccount(_, _, _, _) =>
           val id             = UUID.randomUUID().toString
           val newBankAccount = ctx.spawn(PersistentBankAccount(id), id)
-          newBankAccount ! createCmd
-          registry(bankAccounts + (id -> newBankAccount))
+          Effect
+            .persist(BankAccountCreated(id, newBankAccount))
+            .thenReply(newBankAccount)(_ => createCmd)
         case updateCmd @ UpdateBalance(id, _, _, _) =>
-          bankAccounts.get(id) match {
+          state.accounts.get(id) match {
             case Some(bankAccount) =>
-              bankAccount ! updateCmd
-            case None =>
+              Effect.none.thenReply(bankAccount)(_ => updateCmd)
+            case None => ???
             // TODO: Reply with some error
           }
-          Behaviors.same
         case getCmd @ GetBankAccount(id, replyTo) =>
-          bankAccounts.get(id) match {
+          state.accounts.get(id) match {
             case Some(bankAccount) =>
-              bankAccount ! getCmd
+              Effect.none.thenReply(bankAccount)(_ => getCmd)
             case None =>
-              replyTo ! GetBankAccountResponse(None)
+              Effect.none.thenReply(replyTo)(_ => GetBankAccountResponse(None))
           }
-          Behaviors.same
       }
+  }
+
+  val eventHandler: (State, Event) => State = { (state, event) =>
+    event match {
+      case BankAccountCreated(id, bankAccount) =>
+        state.copy(accounts = state.accounts + (id -> bankAccount))
     }
+  }
 }

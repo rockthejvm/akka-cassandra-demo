@@ -10,21 +10,8 @@ import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
 import akka.util.Timeout
 import cats.data.Validated.{Invalid, Valid}
 import cats.implicits._
-import com.rockthejvm.akka.cassandra.services.Bank.{
-  BankAccountBalanceUpdatedResponse,
-  BankAccountCreatedResponse,
-  GetBankAccountResponse
-}
-import com.rockthejvm.akka.cassandra.services.PersistentBankAccount.{
-  Command,
-  CreateBankAccount,
-  GetBankAccount,
-  UpdateBalance
-}
-import com.rockthejvm.akka.cassandra.http.routes.BankAccountRoutes.{
-  BankAccountBalanceUpdateRequest,
-  BankAccountCreationRequest
-}
+import com.rockthejvm.akka.cassandra.services.PersistentBankAccount.{BankAccountBalanceUpdatedResponse, BankAccountCreatedResponse, Command, CreateBankAccount, GetBankAccount, GetBankAccountResponse, UpdateBalance}
+import com.rockthejvm.akka.cassandra.http.routes.BankAccountRoutes.{BankAccountBalanceUpdateRequest, BankAccountCreationRequest}
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.generic.auto._
 
