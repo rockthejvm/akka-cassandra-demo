@@ -2,7 +2,7 @@ package com.rockthejvm.akka.cassandra.services
 
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
-import akka.persistence.typed.PersistenceId
+import akka.persistence.typed.{PersistenceId, RecoveryCompleted}
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior}
 import com.rockthejvm.akka.cassandra.services.PersistentBankAccount._
 
@@ -23,7 +23,12 @@ object Bank {
       emptyState = State(Map.empty),
       commandHandler = (state, cmd) => commandHandler(state, cmd, ctx),
       eventHandler = eventHandler
-    )
+    ).receiveSignal {
+      case (state, RecoveryCompleted) =>
+        state.accounts.foreach { case (id, _) =>
+          ctx.spawn(PersistentBankAccount(id), id)
+        }
+    }
   }
 
   val commandHandler: (State, Command, ActorContext[Command]) => Effect[Event, State] = {

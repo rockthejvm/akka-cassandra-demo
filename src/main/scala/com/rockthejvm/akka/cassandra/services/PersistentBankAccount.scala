@@ -1,9 +1,7 @@
 package com.rockthejvm.akka.cassandra.services
 
-import akka.actor.typed.receptionist.{Receptionist, ServiceKey}
-import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, Behavior}
-import akka.persistence.typed.{PersistenceId, RecoveryCompleted}
+import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior}
 
 object PersistentBankAccount {
@@ -83,19 +81,10 @@ object PersistentBankAccount {
   }
 
   def apply(id: String): Behavior[Command] =
-    Behaviors.setup { context =>
-      context.log.info(s"Creating bank-account with id $id")
-      context.system.receptionist ! Receptionist.register(ServiceKey[Command](id), context.self)
-
-      EventSourcedBehavior[Command, Event, State](
-        persistenceId = PersistenceId.ofUniqueId(id),
-        emptyState = State.empty(id),
-        commandHandler = commandHandler,
-        eventHandler = eventHandler
-      ).receiveSignal {
-        case (_, RecoveryCompleted) =>
-          context.log.info(s"Recovery completed for bank-account with id $id")
-          context.system.receptionist ! Receptionist.register(ServiceKey[Command](id), context.self)
-      }
-    }
+    EventSourcedBehavior[Command, Event, State](
+      persistenceId = PersistenceId.ofUniqueId(id),
+      emptyState = State.empty(id),
+      commandHandler = commandHandler,
+      eventHandler = eventHandler
+    )
 }
