@@ -13,7 +13,7 @@ curl -v -X POST http://localhost:8080/bank-accounts\
 #### Updating the balance of a bank account
 
 ```shell
-curl -v -X PUT http://localhost:8080/bank-accounts/ce1f4ac3-f1be-4523-b323-25e81d90322f\
+curl -v -X PUT http://localhost:8080/bank-accounts/d2f6c2f5-0838-4fb7-a745-119be8c31c4b\
    -H 'Content-Type: application/json'\
    -d '{"currency":"EUR", "amount": 500.0}'
 ```
