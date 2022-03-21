@@ -2,7 +2,7 @@ package com.rockthejvm.akka.cassandra.services
 
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, Behavior}
-import akka.persistence.typed.{PersistenceId, RecoveryCompleted}
+import akka.persistence.typed.PersistenceId
 import akka.persistence.typed.scaladsl.{Effect, EventSourcedBehavior}
 import com.rockthejvm.akka.cassandra.services.PersistentBankAccount._
 
@@ -21,13 +21,13 @@ object Bank {
     EventSourcedBehavior[Command, Event, State](
       persistenceId = PersistenceId.ofUniqueId("bank"),
       emptyState = State(Map.empty),
-      commandHandler = (state, cmd) => commandHandler(state, cmd, ctx),
+      commandHandler = commandHandler(ctx),
       eventHandler = eventHandler(ctx)
     )
   }
-  
-  val commandHandler: (State, Command, ActorContext[Command]) => Effect[Event, State] = {
-    (state, command, ctx) =>
+
+  def commandHandler(ctx: ActorContext[Command]): (State, Command, ) => Effect[Event, State] = {
+    (state, command) =>
       command match {
         case createCmd @ CreateBankAccount(_, _, _, _) =>
           val id             = UUID.randomUUID().toString
@@ -52,10 +52,14 @@ object Bank {
       }
   }
 
-  def eventHandler(context: ActorContext[Command]): (State, Event) => State = { (state, event) =>
+  def eventHandler(ctx: ActorContext[Command]): (State, Event) => State = { (state, event) =>
     event match {
       case BankAccountCreated(id) =>
-        val bankAccount = context.child(id).getOrElse(context.spawn(PersistentBankAccount(id), id)).asInstanceOf[ActorRef[Command]]
+        val bankAccount =
+          ctx
+            .child(id)
+            .getOrElse(ctx.spawn(PersistentBankAccount(id), id))
+            .asInstanceOf[ActorRef[Command]]
         state.copy(accounts = state.accounts + (id -> bankAccount))
     }
   }
