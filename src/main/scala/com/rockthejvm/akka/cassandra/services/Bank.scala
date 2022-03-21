@@ -12,7 +12,7 @@ object Bank {
 
   // Events
   sealed trait Event
-  case class BankAccountCreated(id: String, bankAccount: ActorRef[Command]) extends Event
+  case class BankAccountCreated(id: String) extends Event
 
   // State
   case class State(accounts: Map[String, ActorRef[Command]])
@@ -22,15 +22,10 @@ object Bank {
       persistenceId = PersistenceId.ofUniqueId("bank"),
       emptyState = State(Map.empty),
       commandHandler = (state, cmd) => commandHandler(state, cmd, ctx),
-      eventHandler = eventHandler
-    ).receiveSignal {
-      case (state, RecoveryCompleted) =>
-        state.accounts.foreach { case (id, _) =>
-          ctx.spawn(PersistentBankAccount(id), id)
-        }
-    }
+      eventHandler = eventHandler(ctx)
+    )
   }
-
+  
   val commandHandler: (State, Command, ActorContext[Command]) => Effect[Event, State] = {
     (state, command, ctx) =>
       command match {
@@ -38,7 +33,7 @@ object Bank {
           val id             = UUID.randomUUID().toString
           val newBankAccount = ctx.spawn(PersistentBankAccount(id), id)
           Effect
-            .persist(BankAccountCreated(id, newBankAccount))
+            .persist(BankAccountCreated(id))
             .thenReply(newBankAccount)(_ => createCmd)
         case updateCmd @ UpdateBalance(id, _, _, _) =>
           state.accounts.get(id) match {
@@ -57,9 +52,10 @@ object Bank {
       }
   }
 
-  val eventHandler: (State, Event) => State = { (state, event) =>
+  def eventHandler(context: ActorContext[Command]): (State, Event) => State = { (state, event) =>
     event match {
-      case BankAccountCreated(id, bankAccount) =>
+      case BankAccountCreated(id) =>
+        val bankAccount = context.child(id).getOrElse(context.spawn(PersistentBankAccount(id), id)).asInstanceOf[ActorRef[Command]]
         state.copy(accounts = state.accounts + (id -> bankAccount))
     }
   }
