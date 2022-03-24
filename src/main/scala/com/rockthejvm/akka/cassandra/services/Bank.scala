@@ -26,7 +26,7 @@ object Bank {
     )
   }
 
-  def commandHandler(ctx: ActorContext[Command]): (State, Command, ) => Effect[Event, State] = {
+  def commandHandler(ctx: ActorContext[Command]): (State, Command) => Effect[Event, State] = {
     (state, command) =>
       command match {
         case createCmd @ CreateBankAccount(_, _, _, _) =>

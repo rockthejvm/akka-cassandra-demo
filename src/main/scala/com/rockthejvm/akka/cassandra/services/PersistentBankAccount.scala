@@ -54,13 +54,11 @@ object PersistentBankAccount {
   val commandHandler: (State, Command) => Effect[Event, State] = { (state, command) =>
     command match {
       case CreateBankAccount(user, currency, initialBalance, replyTo) =>
-        // TODO Add some validation logic
         val id = state.bankAccount.id
         Effect
           .persist(BankAccountCreated(BankAccount(id, user, currency, initialBalance)))
           .thenReply(replyTo)(_ => BankAccountCreatedResponse(id))
       case UpdateBalance(_, currency, amount, replyTo) =>
-        // TODO Add some validation logic
         // TODO We have also to change the currency
         val newBalance = state.bankAccount.balance + amount
         Effect
