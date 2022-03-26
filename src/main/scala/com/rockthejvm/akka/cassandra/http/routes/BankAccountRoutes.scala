@@ -9,7 +9,7 @@ import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import cats.data.Validated.{Invalid, Valid}
 import cats.implicits._
-import com.rockthejvm.akka.cassandra.http.routes.BankAccountRoutes.{BankAccountBalanceUpdateRequest, BankAccountCreationRequest, ValidationFailureResponse}
+import com.rockthejvm.akka.cassandra.http.routes.BankAccountRoutes.{BankAccountBalanceUpdateRequest, BankAccountCreationRequest, FailureResponse}
 import com.rockthejvm.akka.cassandra.services.PersistentBankAccount._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.generic.auto._
@@ -61,7 +61,7 @@ object BankAccountRoutes {
         ).mapN(BankAccountBalanceUpdateRequest.apply)
   }
 
-  final case class ValidationFailureResponse(errors: List[String])
+  final case class FailureResponse(error: String)
 }
 
 class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSystem[_]) {
@@ -77,41 +77,24 @@ class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSyste
   def createBankAccount(request: BankAccountCreationRequest): Future[BankAccountCreatedResponse] =
     bank.ask(replyTo => request.toCmd(replyTo))
 
-  def updateBalance(id: String, request: BankAccountBalanceUpdateRequest): Future[Double] =
-    bank
-      .ask { replyTo: ActorRef[BankAccountBalanceUpdatedResponse] =>
-        request.toCmd(id, replyTo)
-      }
-      .map(_.newBalance)
-
-//  implicit def validatedEntityUnmarshaller[A: Validable](implicit
-//      um: FromRequestUnmarshaller[A]
-//  ): FromRequestUnmarshaller[Valid[A]] =
-//    um.flatMap { _ => _ => entity =>
-//      validateEntity(entity) match {
-//        case v @ Valid(_) =>
-//          Future.successful(v)
-//        case Invalid(failures) =>
-//          val message = failures.toList.map(_.errorMessage).mkString(", ")
-//          Future.failed(new IllegalArgumentException(message))
-//      }
-//    }
+  def updateBalance(id: String, request: BankAccountBalanceUpdateRequest): Future[BankAccountBalanceUpdatedResponse] =
+    bank.ask(replyTo => request.toCmd(id, replyTo))
 
   val bankAccountRoutes: Route =
     pathPrefix("bank-accounts") {
       concat(
         pathEnd {
           concat(post {
-            entity(as[BankAccountCreationRequest]) { unvalidatedBankAccountCreationRequest =>
-              validateEntity(unvalidatedBankAccountCreationRequest) match {
+            entity(as[BankAccountCreationRequest]) { unvalidatedRequest =>
+              validateEntity(unvalidatedRequest) match {
                 case Valid(_) =>
-                  onSuccess(createBankAccount(unvalidatedBankAccountCreationRequest)) { response =>
+                  onSuccess(createBankAccount(unvalidatedRequest)) { response =>
                     respondWithHeader(Location(s"/bank-accounts/${response.id}")) {
                       complete(StatusCodes.Created)
                     }
                   }
                 case Invalid(failure) =>
-                  complete(StatusCodes.BadRequest, ValidationFailureResponse(failure.toList.map(_.errorMessage)))
+                  complete(StatusCodes.BadRequest, FailureResponse(failure.toList.map(_.errorMessage).mkString(", ")))
               }
             }
           })
@@ -124,15 +107,24 @@ class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSyste
                   response.maybeBankAccount match {
                     case Some(bankAccount) => complete(bankAccount)
                     case None =>
-                      complete(StatusCodes.NotFound, s"No bank-account with id $id found")
+                      complete(StatusCodes.NotFound, FailureResponse(s"Bank account with id $id not found"))
                   }
                 }
               }
             },
             put {
-              entity(as[Valid[BankAccountBalanceUpdateRequest]]) { request =>
-                onSuccess(updateBalance(id, request.a)) { newBalance =>
-                  complete((StatusCodes.OK, newBalance))
+              entity(as[BankAccountBalanceUpdateRequest]) { unvalidatedRequest =>
+                validateEntity(unvalidatedRequest) match {
+                  case Valid(_) =>
+                    onSuccess(updateBalance(id, unvalidatedRequest)) { response =>
+                      response.maybeBankAccount match {
+                        case Some(bankAccount) => complete(bankAccount)
+                        case None =>
+                          complete(StatusCodes.NotFound, FailureResponse(s"Bank account with id $id not found"))
+                      }
+                    }
+                  case Invalid(failure) =>
+                    complete(StatusCodes.BadRequest, FailureResponse(failure.toList.map(_.errorMessage).mkString(", ")))
                 }
               }
             }

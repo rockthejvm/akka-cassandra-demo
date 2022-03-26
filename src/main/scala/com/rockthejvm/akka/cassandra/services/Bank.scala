@@ -35,12 +35,12 @@ object Bank {
           Effect
             .persist(BankAccountCreated(id))
             .thenReply(newBankAccount)(_ => createCmd)
-        case updateCmd @ UpdateBalance(id, _, _, _) =>
+        case updateCmd @ UpdateBalance(id, _, _, replyTo) =>
           state.accounts.get(id) match {
             case Some(bankAccount) =>
               Effect.none.thenReply(bankAccount)(_ => updateCmd)
-            case None => ???
-            // TODO: Reply with some error
+            case None =>
+              Effect.none.thenReply(replyTo)(_ => BankAccountBalanceUpdatedResponse(None))
           }
         case getCmd @ GetBankAccount(id, replyTo) =>
           state.accounts.get(id) match {

@@ -39,8 +39,7 @@ object PersistentBankAccount {
   // Responses
   sealed trait Response
   final case class BankAccountCreatedResponse(id: String) extends Response
-  final case class BankAccountBalanceUpdatedResponse(newBalance: Double)
-      extends Response // TODO Maybe, we can return the whole updated object?
+  final case class BankAccountBalanceUpdatedResponse(maybeBankAccount: Option[BankAccount]) extends Response
   final case class GetBankAccountResponse(maybeBankAccount: Option[BankAccount]) extends Response
 
   // Domain object
@@ -58,12 +57,11 @@ object PersistentBankAccount {
         Effect
           .persist(BankAccountCreated(BankAccount(id, user, currency, initialBalance)))
           .thenReply(replyTo)(_ => BankAccountCreatedResponse(id))
-      case UpdateBalance(_, currency, amount, replyTo) =>
-        // TODO We have also to change the currency
+      case UpdateBalance(_, _, amount, replyTo) =>
         val newBalance = state.bankAccount.balance + amount
         Effect
           .persist(BalanceUpdated(newBalance))
-          .thenReply(replyTo)(_ => BankAccountBalanceUpdatedResponse(newBalance))
+          .thenReply(replyTo)(newState => BankAccountBalanceUpdatedResponse(Some(newState.bankAccount)))
       case GetBankAccount(_, replyTo) =>
         Effect.reply(replyTo)(GetBankAccountResponse(Some(state.bankAccount)))
     }
