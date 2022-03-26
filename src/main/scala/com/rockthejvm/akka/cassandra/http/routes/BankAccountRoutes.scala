@@ -9,12 +9,12 @@ import akka.http.scaladsl.server.Route
 import akka.util.Timeout
 import cats.data.Validated.{Invalid, Valid}
 import cats.implicits._
-import com.rockthejvm.akka.cassandra.services.PersistentBankAccount.{BankAccountBalanceUpdatedResponse, BankAccountCreatedResponse, Command, CreateBankAccount, GetBankAccount, GetBankAccountResponse, UpdateBalance}
-import com.rockthejvm.akka.cassandra.http.routes.BankAccountRoutes.{BankAccountBalanceUpdateRequest, BankAccountCreationRequest}
+import com.rockthejvm.akka.cassandra.http.routes.BankAccountRoutes.{BankAccountBalanceUpdateRequest, BankAccountCreationRequest, ValidationFailureResponse}
+import com.rockthejvm.akka.cassandra.services.PersistentBankAccount._
 import de.heikoseeberger.akkahttpcirce.FailFastCirceSupport._
 import io.circe.generic.auto._
-import com.rockthejvm.akka.cassandra.http.routes._
 
+import java.time.Duration
 import scala.concurrent.{ExecutionContextExecutor, Future}
 
 object BankAccountRoutes {
@@ -60,14 +60,15 @@ object BankAccountRoutes {
           toVal.amount.validNel
         ).mapN(BankAccountBalanceUpdateRequest.apply)
   }
+
+  final case class ValidationFailureResponse(errors: List[String])
 }
 
 class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSystem[_]) {
 
   implicit val ec: ExecutionContextExecutor = system.executionContext
 
-  private implicit val timeout: Timeout =
-    Timeout.create(system.settings.config.getDuration("akka-cassandra-demo.routes.ask-timeout"))
+  private implicit val timeout: Timeout = Timeout.create(Duration.ofSeconds(5))
 
   def findBankAccount(id: String): Future[GetBankAccountResponse] = {
     bank.ask(replyTo => GetBankAccount(id, replyTo))
@@ -110,8 +111,7 @@ class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSyste
                     }
                   }
                 case Invalid(failure) =>
-                  // TODO: handle validation errors
-                  complete(StatusCodes.BadRequest, "")
+                  complete(StatusCodes.BadRequest, ValidationFailureResponse(failure.toList.map(_.errorMessage)))
               }
             }
           })
