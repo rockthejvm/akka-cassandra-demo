@@ -1,13 +1,18 @@
 package com.rockthejvm.akka.cassandra
 
-import akka.actor.typed.ActorSystem
+import akka.actor.typed.{ActorRef, ActorSystem, Scheduler}
 import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Route
-import com.rockthejvm.akka.cassandra.http.routes.BankAccountRoutes
-import com.rockthejvm.akka.cassandra.services.Bank
+import com.rockthejvm.akka.cassandra.services.{Bank, PersistentBankAccount}
 
 import scala.util.{Failure, Success}
+import akka.actor.typed.scaladsl.AskPattern._
+import akka.util.Timeout
+import com.rockthejvm.akka.cassandra.http.routes.BankAccountRoutes
+
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
 
 object MainApp {
   private def startHttpServer(routes: Route)(implicit system: ActorSystem[_]): Unit = {
@@ -24,18 +29,28 @@ object MainApp {
         system.terminate()
     }
   }
-  //#start-http-server
+
   def main(args: Array[String]): Unit = {
-    val rootBehavior = Behaviors.setup[Nothing] { context =>
+    trait RootCommand
+    case class RetrieveBankActor(replyTo: ActorRef[ActorRef[PersistentBankAccount.Command]]) extends RootCommand
+
+    val rootBehavior = Behaviors.setup[RootCommand] { context =>
       val bankActor = context.spawn(Bank(), "BankActor")
       context.watch(bankActor)
 
-      // TODO get the routes out of the actor system
-      val routes = new BankAccountRoutes(bankActor)(context.system)
-      startHttpServer(routes.bankAccountRoutes)(context.system)
-
-      Behaviors.empty
+      Behaviors.receiveMessage {
+        case RetrieveBankActor(replyTo) => replyTo ! bankActor
+        Behaviors.same
+      }
     }
-    val system = ActorSystem[Nothing](rootBehavior, "AkkaCassandraDemoServer")
+
+    implicit val system: ActorSystem[RootCommand] = ActorSystem(rootBehavior, "AkkaCassandraDemoServer")
+    implicit val timeout: Timeout = Timeout(2.seconds)
+    implicit val ec: ExecutionContext = system.executionContext
+
+    system.ask(replyTo => RetrieveBankActor(replyTo)).foreach { bankActor =>
+      val routes = new BankAccountRoutes(bankActor)
+      startHttpServer(routes.bankAccountRoutes)
+    }
   }
 }
