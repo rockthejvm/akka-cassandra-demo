@@ -8,21 +8,24 @@ object PersistentBankAccount {
 
   // Commands
   sealed trait Command
+
   final case class CreateBankAccount(
       user: String,
       currency: String,
       initialBalance: Double,
-      replyTo: ActorRef[BankAccountCreatedResponse] // TODO Change this type
+      replyTo: ActorRef[Response]
   ) extends Command
+
   final case class UpdateBalance(
       id: String,
       currency: String,
       amount: Double,
-      replyTo: ActorRef[BankAccountBalanceUpdatedResponse] // TODO Change this type
+      replyTo: ActorRef[Response]
   ) extends Command
+
   final case class GetBankAccount(
       id: String,
-      replyTo: ActorRef[GetBankAccountResponse]
+      replyTo: ActorRef[Response]
   ) extends Command
 
   // Events

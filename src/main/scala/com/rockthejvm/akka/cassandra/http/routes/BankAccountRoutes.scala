@@ -5,7 +5,8 @@ import akka.actor.typed.{ActorRef, ActorSystem}
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.headers.Location
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.{Directive1, Route}
+import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.unmarshalling.FromRequestUnmarshaller
 import akka.util.Timeout
 import cats.data.Validated.{Invalid, Valid}
 import cats.implicits._
@@ -23,7 +24,7 @@ object BankAccountRoutes {
       currency: String,
       balance: Double
   ) {
-    def toCmd(replyTo: ActorRef[BankAccountCreatedResponse]): Command =
+    def toCmd(replyTo: ActorRef[Response]): Command =
       CreateBankAccount(
         user,
         currency,
@@ -42,7 +43,7 @@ object BankAccountRoutes {
   }
 
   final case class BankAccountBalanceUpdateRequest(currency: String, amount: Double) {
-    def toCmd(id: String, replyTo: ActorRef[BankAccountBalanceUpdatedResponse]): Command =
+    def toCmd(id: String, replyTo: ActorRef[Response]): Command =
       UpdateBalance(
         id,
         currency,
@@ -103,7 +104,7 @@ class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSyste
             // same code
           }
    */
-  def entityWithValidation[R: Validable](handler: R => Route): Route =
+  def entityWithValidation[R: Validable](handler: R => Route)(implicit um: FromRequestUnmarshaller[R]): Route =
     entity(as[R]) { req =>
       validateRequest(req) {
         handler(req)
