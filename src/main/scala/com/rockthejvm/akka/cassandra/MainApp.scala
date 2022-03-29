@@ -30,6 +30,7 @@ object MainApp {
       val bankActor = context.spawn(Bank(), "BankActor")
       context.watch(bankActor)
 
+      // TODO get the routes out of the actor system
       val routes = new BankAccountRoutes(bankActor)(context.system)
       startHttpServer(routes.bankAccountRoutes)(context.system)
 

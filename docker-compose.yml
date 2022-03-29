@@ -5,7 +5,5 @@ services:
     image: cassandra:4.0.3
     ports:
       - 9042:9042
-    volumes:
-      - ~/apps/cassandra:/var/lib/cassandra
     environment:
       - CASSANDRA_CLUSTER_NAME=akka-cassandra-cluster
