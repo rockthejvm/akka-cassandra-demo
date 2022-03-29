@@ -33,7 +33,7 @@ object BankAccountRoutes {
       )
   }
   object BankAccountCreationRequest {
-    implicit val BankAccountCreationRequestValidable: Validable[BankAccountCreationRequest] =
+    implicit val BankAccountCreationRequestValidator: Validator[BankAccountCreationRequest] =
       (toVal: BankAccountCreationRequest) =>
         (
           validateRequired(toVal.user, "user"),
@@ -53,8 +53,8 @@ object BankAccountRoutes {
   }
 
   object BankAccountBalanceUpdateRequest {
-    implicit val BankAccountBalanceUpdateRequestValidable
-        : Validable[BankAccountBalanceUpdateRequest] =
+    implicit val BankAccountBalanceUpdateRequestValidator
+        : Validator[BankAccountBalanceUpdateRequest] =
       (toVal: BankAccountBalanceUpdateRequest) =>
         (
           validateRequired(toVal.currency, "currency"),
@@ -81,7 +81,7 @@ class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSyste
   def updateBalance(id: String, request: BankAccountBalanceUpdateRequest): Future[Response] =
     bank.ask(replyTo => request.toCmd(id, replyTo))
 
-  def validateRequest[R: Validable](request: R)(validRoute: Route): Route =
+  def validateRequest[R: Validator](request: R)(validRoute: Route): Route =
     validateEntity(request) match {
       case Valid(_) =>
         validRoute
@@ -104,7 +104,7 @@ class BankAccountRoutes(bank: ActorRef[Command])(implicit val system: ActorSyste
             // same code
           }
    */
-  def entityWithValidation[R: Validable](handler: R => Route)(implicit um: FromRequestUnmarshaller[R]): Route =
+  def entityWithValidation[R: Validator](handler: R => Route)(implicit um: FromRequestUnmarshaller[R]): Route =
     entity(as[R]) { req =>
       validateRequest(req) {
         handler(req)
