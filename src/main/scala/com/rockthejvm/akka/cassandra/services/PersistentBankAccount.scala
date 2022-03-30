@@ -16,10 +16,11 @@ object PersistentBankAccount {
       replyTo: ActorRef[Response]
   ) extends Command
 
+  // withdraw OR deposit
   final case class UpdateBalance(
       id: String,
       currency: String,
-      amount: Double,
+      amount: Double, // can be negative
       replyTo: ActorRef[Response]
   ) extends Command
 
@@ -34,17 +35,6 @@ object PersistentBankAccount {
   final case class BalanceUpdated(newBalance: Double)           extends Event
 
   // State
-  final case class State(bankAccount: BankAccount)
-  object State {
-    def empty(id: String): State = State(BankAccount(id, "", "", 0.0))
-  }
-
-  // Responses
-  sealed trait Response
-  final case class BankAccountCreatedResponse(id: String) extends Response
-  final case class BankAccountBalanceUpdatedResponse(maybeBankAccount: Option[BankAccount]) extends Response
-  final case class GetBankAccountResponse(maybeBankAccount: Option[BankAccount]) extends Response
-
   // Domain object
   final case class BankAccount(
       id: String,
@@ -53,36 +43,46 @@ object PersistentBankAccount {
       balance: Double
   ) // Don't use Double for money in production!
 
-  val commandHandler: (State, Command) => Effect[Event, State] = { (state, command) =>
+  object BankAccount {
+    def empty(id: String): BankAccount = BankAccount(id, "", "", 0.0)
+  }
+
+  // Responses
+  sealed trait Response
+  final case class BankAccountCreatedResponse(id: String) extends Response
+  final case class BankAccountBalanceUpdatedResponse(maybeBankAccount: Option[BankAccount]) extends Response
+  final case class GetBankAccountResponse(maybeBankAccount: Option[BankAccount]) extends Response
+
+
+  val commandHandler: (BankAccount, Command) => Effect[Event, BankAccount] = { (state, command) =>
     command match {
       case CreateBankAccount(user, currency, initialBalance, replyTo) =>
-        val id = state.bankAccount.id
+        val id = state.id
         Effect
           .persist(BankAccountCreated(BankAccount(id, user, currency, initialBalance)))
           .thenReply(replyTo)(_ => BankAccountCreatedResponse(id))
       case UpdateBalance(_, _, amount, replyTo) =>
-        val newBalance = state.bankAccount.balance + amount
+        val newBalance = state.balance + amount
         Effect
           .persist(BalanceUpdated(newBalance))
-          .thenReply(replyTo)(newState => BankAccountBalanceUpdatedResponse(Some(newState.bankAccount)))
+          .thenReply(replyTo)(newState => BankAccountBalanceUpdatedResponse(Some(newState)))
       case GetBankAccount(_, replyTo) =>
-        Effect.reply(replyTo)(GetBankAccountResponse(Some(state.bankAccount)))
+        Effect.reply(replyTo)(GetBankAccountResponse(Some(state)))
     }
   }
 
-  val eventHandler: (State, Event) => State = { (state, event) =>
+  val eventHandler: (BankAccount, Event) => BankAccount = { (state, event) =>
     event match {
-      case BankAccountCreated(bankAccount) =>
-        state.copy(bankAccount = bankAccount)
-      case BalanceUpdated(newBalance) =>
-        state.copy(bankAccount = state.bankAccount.copy(balance = newBalance))
+      case BankAccountCreated(bankAccount) => bankAccount
+      case BalanceUpdated(amount) =>
+        state.copy(balance = state.balance + amount)
     }
   }
 
   def apply(id: String): Behavior[Command] =
-    EventSourcedBehavior[Command, Event, State](
+    EventSourcedBehavior[Command, Event, BankAccount](
       persistenceId = PersistenceId.ofUniqueId(id),
-      emptyState = State.empty(id),
+      emptyState = BankAccount.empty(id),
       commandHandler = commandHandler,
       eventHandler = eventHandler
     )
